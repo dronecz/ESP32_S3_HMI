@@ -7,7 +7,7 @@
 const int freq = 5000;
 const int ledChannel = 0;
 const int resolution = 8;
-int dutyCycle = 255;
+int dutyCycle = 25; //255
 byte dimmedDutyCycle = 15;
 
 bool printTouchData = 1;
@@ -17,15 +17,15 @@ unsigned long dimmingInterval = 10000;
 
 #define TFT_BL 2
 Arduino_ESP32RGBPanel *rgbpanel = new Arduino_ESP32RGBPanel(
-    41 /* DE */, 40 /* VSYNC */, 39 /* HSYNC */, 42 /* PCLK */,
-    14 /* R0 */, 21 /* R1 */, 47 /* R2 */, 48 /* R3 */, 45 /* R4 */,
-    9 /* G0 */, 46 /* G1 */, 3 /* G2 */, 8 /* G3 */, 16 /* G4 */, 1 /* G5 */,
-    15 /* B0 */, 7 /* B1 */, 6 /* B2 */, 5 /* B3 */, 4 /* B4 */,
-    0 /* hsync_polarity */, 180 /* hsync_front_porch */, 30 /* hsync_pulse_width */, 16 /* hsync_back_porch */,
-    0 /* vsync_polarity */, 12 /* vsync_front_porch */, 13 /* vsync_pulse_width */, 10 /* vsync_back_porch */);
+  41 /* DE */, 40 /* VSYNC */, 39 /* HSYNC */, 42 /* PCLK */,
+  14 /* R0 */, 21 /* R1 */, 47 /* R2 */, 48 /* R3 */, 45 /* R4 */,
+  9 /* G0 */, 46 /* G1 */, 3 /* G2 */, 8 /* G3 */, 16 /* G4 */, 1 /* G5 */,
+  15 /* B0 */, 7 /* B1 */, 6 /* B2 */, 5 /* B3 */, 4 /* B4 */,
+  0 /* hsync_polarity */, 180 /* hsync_front_porch */, 30 /* hsync_pulse_width */, 16 /* hsync_back_porch */,
+  0 /* vsync_polarity */, 12 /* vsync_front_porch */, 13 /* vsync_pulse_width */, 10 /* vsync_back_porch */);
 Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
-    800 /* width */, 480 /* height */, rgbpanel, 0 /* rotation */, true /* auto_flush */);
-    
+  800 /* width */, 480 /* height */, rgbpanel, 0 /* rotation */, true /* auto_flush */);
+
 #include "touch.h"
 
 /* Change to your screen resolution */
@@ -63,7 +63,12 @@ void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
 
       //light up backlight to full power
       dutyCycle = 255;
-      ledcWrite(ledChannel, dutyCycle);
+//#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+      ledcWriteChannel(ledChannel, dutyCycle);
+//#else
+//      ledcWrite(ledChannel, dutyCycle);
+//#endif
+
 
       data->state = LV_INDEV_STATE_PR;
 
@@ -92,25 +97,32 @@ void dimmLCD() {
     if (millis() - touchedTime > dimmingInterval) {
       for (byte i = dutyCycle; i >= dimmedDutyCycle; i--) {
         dutyCycle = i;
-        ledcWrite(ledChannel, dutyCycle);
+//#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+        ledcWriteChannel(ledChannel, dutyCycle);
+//#else
+//        ledcWrite(ledChannel, dutyCycle);
+//#endif
+        lcdTouched = 0;
+        Serial.println("Dimming");
       }
-      lcdTouched = 0;
-      Serial.println("Dimming");
     }
   }
 }
 
 void setup() {
 
-  // configure LED PWM functionalitites
-  ledcSetup(ledChannel, freq, resolution);
-
-  // attach the channel to the GPIO to be controlled
-  ledcAttachPin(TFT_BL, ledChannel);
-
-  //write to the channel dutyCycle value
-  ledcWrite(ledChannel, dutyCycle);
-
+//#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+  ledcAttachChannel(TFT_BL, freq, resolution, ledChannel);
+//#else
+//  // configure LED PWM functionalitites
+//  ledcSetup(ledChannel, freq, resolution);
+//
+//  // attach the channel to the GPIO to be controlled
+//  ledcAttachPin(TFT_BL, ledChannel);
+//
+//  //write to the channel dutyCycle value
+//  ledcWrite(ledChannel, dutyCycle);
+//#endif
   Serial.begin(115200); /* prepare for possible serial debug */
 
   // Init Display
@@ -164,7 +176,7 @@ void setup() {
 }
 
 void loop() {
-  dimmLCD();
+  //  dimmLCD();
   lv_timer_handler(); /* let the GUI do its work */
   delay(5);
 }
